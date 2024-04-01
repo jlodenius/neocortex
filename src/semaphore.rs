@@ -1,6 +1,11 @@
 use crate::{hive_error::HiveError, HiveResult, HiveSync};
 use std::ffi::CString;
 
+fn get_name(shmem_key: i32) -> HiveResult<CString> {
+    let name = CString::new(format!("hive_sem_{}", shmem_key))?;
+    Ok(name)
+}
+
 #[allow(dead_code)]
 enum SemaphorePermission {
     OwnerOnly,
@@ -8,10 +13,11 @@ enum SemaphorePermission {
     ReadWriteForOthers,
     ReadOnlyForOthers,
     FullAccessForEveryone,
+    Custom(libc::mode_t),
 }
 
 impl SemaphorePermission {
-    fn to_mode(self) -> libc::mode_t {
+    fn into_mode(self) -> libc::mode_t {
         match self {
             SemaphorePermission::OwnerOnly => libc::S_IRWXU,
             SemaphorePermission::OwnerAndGroup => libc::S_IRWXU | libc::S_IRWXG,
@@ -22,6 +28,7 @@ impl SemaphorePermission {
             SemaphorePermission::FullAccessForEveryone => {
                 libc::S_IRWXU | libc::S_IRWXG | libc::S_IROTH | libc::S_IWOTH | libc::S_IXOTH
             }
+            SemaphorePermission::Custom(mode) => mode,
         }
     }
 }
@@ -31,6 +38,10 @@ pub(super) struct Semaphore {
     semaphore: *mut libc::sem_t,
     name: CString,
     is_owner: bool,
+}
+
+pub(super) struct SemaphoreSettings {
+    mode: SemaphorePermission,
 }
 
 impl Drop for Semaphore {
@@ -50,14 +61,22 @@ impl Drop for Semaphore {
 }
 
 impl HiveSync for Semaphore {
-    fn new(shmem_key: i32) -> HiveResult<Self> {
-        let name = CString::new(format!("hive_mind_sem_{}", shmem_key))?;
+    type Settings = SemaphoreSettings;
+
+    fn new(shmem_key: i32, settings: Option<Self::Settings>) -> HiveResult<Self> {
+        let permission = if let Some(settings) = settings {
+            settings.mode
+        } else {
+            // Use most restrictive mode as default
+            SemaphorePermission::OwnerOnly
+        };
+        let name = get_name(shmem_key)?;
         let name_ptr = name.as_ptr();
         let semaphore = unsafe {
             libc::sem_open(
                 name_ptr,
                 libc::O_EXCL | libc::O_CREAT,
-                SemaphorePermission::OwnerAndGroup.to_mode(),
+                permission.into_mode(),
                 1,
             )
         };
@@ -71,7 +90,7 @@ impl HiveSync for Semaphore {
         })
     }
     fn attach(shmem_key: i32) -> HiveResult<Self> {
-        let name = CString::new(format!("hive_mind_sem_{}", shmem_key))?;
+        let name = get_name(shmem_key)?;
         let name_ptr = name.as_ptr();
         let semaphore = unsafe { libc::sem_open(name_ptr, 0, 0, 0) };
         if semaphore == libc::SEM_FAILED {

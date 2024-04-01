@@ -2,9 +2,7 @@ mod hive_error;
 mod semaphore;
 
 use hive_error::HiveError;
-use libc;
 use std::fmt::Display;
-use tracing;
 
 pub type HiveResult<T> = std::result::Result<T, HiveError>;
 
@@ -22,7 +20,9 @@ fn try_clear_mem(id: i32) -> HiveResult<()> {
 }
 
 pub trait HiveSync: Sized {
-    fn new(shmem_key: i32) -> HiveResult<Self>;
+    type Settings;
+
+    fn new(shmem_key: i32, settings: Option<Self::Settings>) -> HiveResult<Self>;
     fn attach(shmem_key: i32) -> HiveResult<Self>;
     fn read_lock(&self);
     fn write_lock(&self);
@@ -50,8 +50,8 @@ impl<T, L> Display for Hive<T, L> {
 
 impl<T, L: HiveSync> Hive<T, L> {
     /// Allocate a new segment of shared memory
-    pub fn new(key: i32, data: T) -> HiveResult<Self> {
-        let lock = L::new(key)?;
+    pub fn new(key: i32, data: T, lock_settings: Option<L::Settings>) -> HiveResult<Self> {
+        let lock = L::new(key, lock_settings)?;
 
         // Allocate memory
         let size = std::mem::size_of::<T>();
@@ -63,7 +63,7 @@ impl<T, L: HiveSync> Hive<T, L> {
             tracing::trace!("Allocated {} bytes with id {}", size, id);
         }
 
-        // Attach mem to current process and get a pointer
+        // Attach memory to current process and get a pointer
         let ptr = unsafe { libc::shmat(id, std::ptr::null_mut(), 0) as *mut T };
         if ptr as isize == -1 {
             try_clear_mem(id)?;
@@ -116,7 +116,7 @@ impl<T, L: HiveSync> Hive<T, L> {
             ptr,
         })
     }
-    /// Read from shared mem
+    /// Read from shared memory
     pub fn read(&self) -> T {
         unsafe {
             self.lock.read_lock();
@@ -125,7 +125,7 @@ impl<T, L: HiveSync> Hive<T, L> {
             data
         }
     }
-    /// Write data to shared mem
+    /// Write to shared memory
     pub fn write(&self, data: T) {
         unsafe {
             self.lock.write_lock();
@@ -156,21 +156,17 @@ mod tests {
 
     #[test]
     fn create_shared_mem() {
-        use crate::*;
-
         let key = rand::random::<i32>().abs();
         let data: f64 = 42.0;
-        let hive: Hive<_, Semaphore> = Hive::new(key, data).unwrap();
+        let hive: Hive<_, Semaphore> = Hive::new(key, data, None).unwrap();
         assert_eq!(hive.read(), 42.0);
     }
 
     #[test]
     fn attach_to_shared_mem() {
-        use crate::*;
-
         let key = rand::random::<i32>().abs();
         let data: f64 = 42.0;
-        let hive: Hive<_, Semaphore> = Hive::new(key, data).unwrap();
+        let hive: Hive<_, Semaphore> = Hive::new(key, data, None).unwrap();
         assert_eq!(hive.read(), 42.0);
 
         let hive2: Hive<_, Semaphore> = Hive::attach(key).unwrap();
@@ -184,7 +180,7 @@ mod tests {
 
         // Create a new shared memory segment
         let _hive: Hive<_, Semaphore> =
-            Hive::new(key, initial_data).expect("Failed to create shared memory");
+            Hive::new(key, initial_data, None).expect("Failed to create shared memory");
 
         let n_threads = 20;
         let barrier = Arc::new(Barrier::new(n_threads + 1));

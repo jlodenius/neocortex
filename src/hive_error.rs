@@ -2,13 +2,13 @@ use std::{error::Error, ffi::NulError, fmt::Display};
 
 #[derive(Debug)]
 pub enum HiveError {
-    /// Propagated from std::ffi::NulError
+    /// Propagated from `std::ffi::NulError`.
     NulError(String),
     /// Unexpected system error occured, but all resources were cleaned up properly.
-    CleanSystemError(InnerError),
+    CleanSystem(InnerError),
     /// Unexpected system error occured, and memory cleanup may not have executed properly.
     /// Upon receiving this error, manual intervention might be necessary.
-    DirtySystemError(InnerError),
+    DirtySystem(InnerError),
 }
 
 #[derive(Debug)]
@@ -19,16 +19,15 @@ pub struct InnerError {
 
 impl Display for HiveError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let msg = match self {
+        match self {
             HiveError::NulError(msg) => write!(f, "{msg}"),
-            HiveError::CleanSystemError(err) => {
+            HiveError::CleanSystem(err) => {
                 write!(f, "{}. OS Error: {}", err.message, err.os_error)
             }
-            HiveError::DirtySystemError(err) => {
+            HiveError::DirtySystem(err) => {
                 write!(f, "{}. OS Error: {}", err.message, err.os_error)
             }
-        };
-        msg
+        }
     }
 }
 
@@ -47,11 +46,11 @@ impl HiveError {
     }
     pub(super) fn new_clean(message: impl ToString) -> Self {
         let inner = Self::new_inner_error(message);
-        Self::CleanSystemError(inner)
+        Self::CleanSystem(inner)
     }
     pub(super) fn new_dirty(message: impl ToString) -> Self {
         let inner = Self::new_inner_error(message);
-        Self::DirtySystemError(inner)
+        Self::DirtySystem(inner)
     }
 }
 
