@@ -1,6 +1,6 @@
 # hive_mind
 
-<img src="img/dr_neo_cortex.png" width="200" height="200">
+<div align="center"><img src="img/dr_neo_cortex.png" width="200" height="200"></div>
 
 Shared memory crate designed for simplicity, safety, and extensibility. With minimal dependencies on `libc` and `tracing`, this crate wraps unsafe shared memory operations in a user-friendly API.
 
