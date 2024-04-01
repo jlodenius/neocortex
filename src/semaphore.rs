@@ -41,7 +41,7 @@ pub struct Semaphore {
 }
 
 pub struct SemaphoreSettings {
-    mode: SemaphorePermission,
+    pub mode: SemaphorePermission,
 }
 
 impl Drop for Semaphore {
