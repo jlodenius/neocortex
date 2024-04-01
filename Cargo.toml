@@ -1,7 +1,7 @@
 [package]
 name = "neocortex"
 description = "Shared memory crate designed for simplicity, safety, and extensibility"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
 documentation = "https://docs.rs/neocortex/latest/neocortex/"
 authors = ["Jacob <jacob@lodenius.com>"]

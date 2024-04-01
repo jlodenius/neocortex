@@ -1,7 +1,8 @@
-pub mod crash;
-pub mod semaphore;
+mod crash;
+mod semaphore;
 
-use crash::CortexError;
+pub use crash::CortexError;
+pub use semaphore::{Semaphore, SemaphorePermission, SemaphoreSettings};
 use std::fmt::Display;
 
 pub type CortexResult<T> = std::result::Result<T, CortexError>;
