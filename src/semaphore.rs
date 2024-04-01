@@ -7,6 +7,7 @@ fn get_name(shmem_key: i32) -> CortexResult<CString> {
 }
 
 #[allow(dead_code)]
+/// Set of pre-defined permissions to use
 pub enum SemaphorePermission {
     OwnerOnly,
     OwnerAndGroup,
