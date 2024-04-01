@@ -1,4 +1,4 @@
-use crate::{cortex_error::CortexError, CortexResult, CortexSync};
+use crate::{crash::CortexError, CortexResult, CortexSync};
 use std::ffi::CString;
 
 fn get_name(shmem_key: i32) -> CortexResult<CString> {

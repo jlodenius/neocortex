@@ -1,7 +1,7 @@
-mod cortex_error;
+mod crash;
 mod semaphore;
 
-use cortex_error::CortexError;
+use crash::CortexError;
 use std::fmt::Display;
 
 pub type CortexResult<T> = std::result::Result<T, CortexError>;
