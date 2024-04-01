@@ -39,18 +39,18 @@ impl From<NulError> for HiveError {
 }
 
 impl HiveError {
-    pub(super) fn new_clean(message: impl ToString) -> Self {
-        let inner = InnerError {
+    fn new_inner_error(message: impl ToString) -> InnerError {
+        InnerError {
             os_error: Box::new(std::io::Error::last_os_error()),
             message: message.to_string(),
-        };
+        }
+    }
+    pub(super) fn new_clean(message: impl ToString) -> Self {
+        let inner = Self::new_inner_error(message);
         Self::CleanSystemError(inner)
     }
     pub(super) fn new_dirty(message: impl ToString) -> Self {
-        let inner = InnerError {
-            os_error: Box::new(std::io::Error::last_os_error()),
-            message: message.to_string(),
-        };
+        let inner = Self::new_inner_error(message);
         Self::DirtySystemError(inner)
     }
 }
