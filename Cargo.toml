@@ -1,7 +1,9 @@
 [package]
 name = "hive_mind"
+description = "Shared memory crate designed for simplicity, safety, and extensibility"
 version = "0.1.0"
 edition = "2021"
+authors = ["Jacob <jacob@lodenius.com>"]
 license-file = "LICENSE"
 
 # For crates.io
