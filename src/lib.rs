@@ -23,8 +23,8 @@ fn try_clear_mem(id: i32) -> CortexResult<()> {
 pub trait CortexSync: Sized {
     type Settings;
 
-    fn new(shmem_key: i32, settings: Option<Self::Settings>) -> CortexResult<Self>;
-    fn attach(shmem_key: i32) -> CortexResult<Self>;
+    fn new(cortex_key: i32, settings: Option<Self::Settings>) -> CortexResult<Self>;
+    fn attach(cortex_key: i32) -> CortexResult<Self>;
     fn read_lock(&self);
     fn write_lock(&self);
     fn release(&self);
@@ -136,7 +136,7 @@ impl<T, L: CortexSync> Cortex<T, L> {
     }
 }
 
-/// Drop a segment of shared memory and clean up its semaphore
+/// Drop a segment of shared memory
 impl<T, L> Drop for Cortex<T, L> {
     fn drop(&mut self) {
         if !self.is_owner {

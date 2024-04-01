@@ -63,14 +63,14 @@ impl Drop for Semaphore {
 impl CortexSync for Semaphore {
     type Settings = SemaphoreSettings;
 
-    fn new(shmem_key: i32, settings: Option<Self::Settings>) -> CortexResult<Self> {
+    fn new(cortex_key: i32, settings: Option<Self::Settings>) -> CortexResult<Self> {
         let permission = if let Some(settings) = settings {
             settings.mode
         } else {
             // Use most restrictive mode as default
             SemaphorePermission::OwnerOnly
         };
-        let name = get_name(shmem_key)?;
+        let name = get_name(cortex_key)?;
         let name_ptr = name.as_ptr();
         let semaphore = unsafe {
             libc::sem_open(
@@ -89,8 +89,8 @@ impl CortexSync for Semaphore {
             is_owner: true,
         })
     }
-    fn attach(shmem_key: i32) -> CortexResult<Self> {
-        let name = get_name(shmem_key)?;
+    fn attach(cortex_key: i32) -> CortexResult<Self> {
+        let name = get_name(cortex_key)?;
         let name_ptr = name.as_ptr();
         let semaphore = unsafe { libc::sem_open(name_ptr, 0, 0, 0) };
         if semaphore == libc::SEM_FAILED {
