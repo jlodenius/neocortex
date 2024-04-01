@@ -1,8 +1,8 @@
-use crate::{hive_error::HiveError, HiveResult, HiveSync};
+use crate::{cortex_error::CortexError, CortexResult, CortexSync};
 use std::ffi::CString;
 
-fn get_name(shmem_key: i32) -> HiveResult<CString> {
-    let name = CString::new(format!("hive_sem_{}", shmem_key))?;
+fn get_name(shmem_key: i32) -> CortexResult<CString> {
+    let name = CString::new(format!("cortex_semaphore_{}", shmem_key))?;
     Ok(name)
 }
 
@@ -60,10 +60,10 @@ impl Drop for Semaphore {
     }
 }
 
-impl HiveSync for Semaphore {
+impl CortexSync for Semaphore {
     type Settings = SemaphoreSettings;
 
-    fn new(shmem_key: i32, settings: Option<Self::Settings>) -> HiveResult<Self> {
+    fn new(shmem_key: i32, settings: Option<Self::Settings>) -> CortexResult<Self> {
         let permission = if let Some(settings) = settings {
             settings.mode
         } else {
@@ -81,7 +81,7 @@ impl HiveSync for Semaphore {
             )
         };
         if semaphore == libc::SEM_FAILED {
-            return Err(HiveError::new_clean("Error during sem_open"));
+            return Err(CortexError::new_clean("Error during sem_open"));
         }
         Ok(Self {
             semaphore,
@@ -89,12 +89,12 @@ impl HiveSync for Semaphore {
             is_owner: true,
         })
     }
-    fn attach(shmem_key: i32) -> HiveResult<Self> {
+    fn attach(shmem_key: i32) -> CortexResult<Self> {
         let name = get_name(shmem_key)?;
         let name_ptr = name.as_ptr();
         let semaphore = unsafe { libc::sem_open(name_ptr, 0, 0, 0) };
         if semaphore == libc::SEM_FAILED {
-            return Err(HiveError::new_clean("Error during sem_open"));
+            return Err(CortexError::new_clean("Error during sem_open"));
         }
         Ok(Self {
             semaphore,

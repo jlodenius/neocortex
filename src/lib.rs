@@ -1,16 +1,16 @@
-mod hive_error;
+mod cortex_error;
 mod semaphore;
 
-use hive_error::HiveError;
+use cortex_error::CortexError;
 use std::fmt::Display;
 
-pub type HiveResult<T> = std::result::Result<T, HiveError>;
+pub type CortexResult<T> = std::result::Result<T, CortexError>;
 
 /// Attempt to clean up a segment of shared memory
-fn try_clear_mem(id: i32) -> HiveResult<()> {
+fn try_clear_mem(id: i32) -> CortexResult<()> {
     unsafe {
         if libc::shmctl(id, libc::IPC_RMID, std::ptr::null_mut()) == -1 {
-            return Err(HiveError::new_dirty(format!(
+            return Err(CortexError::new_dirty(format!(
                 "Error cleaning up shared memory with id: {}",
                 id
             )));
@@ -19,17 +19,17 @@ fn try_clear_mem(id: i32) -> HiveResult<()> {
     Ok(())
 }
 
-pub trait HiveSync: Sized {
+pub trait CortexSync: Sized {
     type Settings;
 
-    fn new(shmem_key: i32, settings: Option<Self::Settings>) -> HiveResult<Self>;
-    fn attach(shmem_key: i32) -> HiveResult<Self>;
+    fn new(shmem_key: i32, settings: Option<Self::Settings>) -> CortexResult<Self>;
+    fn attach(shmem_key: i32) -> CortexResult<Self>;
     fn read_lock(&self);
     fn write_lock(&self);
     fn release(&self);
 }
 
-pub struct Hive<T, L> {
+pub struct Cortex<T, L> {
     key: i32,
     id: i32,
     size: usize,
@@ -38,7 +38,7 @@ pub struct Hive<T, L> {
     ptr: *mut T,
 }
 
-impl<T, L> Display for Hive<T, L> {
+impl<T, L> Display for Cortex<T, L> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -48,9 +48,9 @@ impl<T, L> Display for Hive<T, L> {
     }
 }
 
-impl<T, L: HiveSync> Hive<T, L> {
+impl<T, L: CortexSync> Cortex<T, L> {
     /// Allocate a new segment of shared memory
-    pub fn new(key: i32, data: T, lock_settings: Option<L::Settings>) -> HiveResult<Self> {
+    pub fn new(key: i32, data: T, lock_settings: Option<L::Settings>) -> CortexResult<Self> {
         let lock = L::new(key, lock_settings)?;
 
         // Allocate memory
@@ -85,14 +85,14 @@ impl<T, L: HiveSync> Hive<T, L> {
         })
     }
     /// Attempt to attach to an already existing segment of shared memory
-    pub fn attach(key: i32) -> HiveResult<Self> {
+    pub fn attach(key: i32) -> CortexResult<Self> {
         let lock = L::attach(key)?;
 
         let id = unsafe {
             libc::shmget(key, 0, 0o666) // Size is 0 since we're not creating the segment
         };
         if id == -1 {
-            return Err(HiveError::new_clean(format!(
+            return Err(CortexError::new_clean(format!(
                 "Error during shmget for key {}",
                 key,
             )));
@@ -102,7 +102,7 @@ impl<T, L: HiveSync> Hive<T, L> {
 
         let ptr = unsafe { libc::shmat(id, std::ptr::null_mut(), 0) as *mut T };
         if ptr as isize == -1 {
-            return Err(HiveError::new_clean("Error during shmat"));
+            return Err(CortexError::new_clean("Error during shmat"));
         } else {
             tracing::trace!("Successfully attached shared memory");
         }
@@ -136,7 +136,7 @@ impl<T, L: HiveSync> Hive<T, L> {
 }
 
 /// Drop a segment of shared memory and clean up its semaphore
-impl<T, L> Drop for Hive<T, L> {
+impl<T, L> Drop for Cortex<T, L> {
     fn drop(&mut self) {
         if !self.is_owner {
             return;
@@ -158,19 +158,19 @@ mod tests {
     fn create_shared_mem() {
         let key = rand::random::<i32>().abs();
         let data: f64 = 42.0;
-        let hive: Hive<_, Semaphore> = Hive::new(key, data, None).unwrap();
-        assert_eq!(hive.read(), 42.0);
+        let cortex: Cortex<_, Semaphore> = Cortex::new(key, data, None).unwrap();
+        assert_eq!(cortex.read(), 42.0);
     }
 
     #[test]
     fn attach_to_shared_mem() {
         let key = rand::random::<i32>().abs();
         let data: f64 = 42.0;
-        let hive: Hive<_, Semaphore> = Hive::new(key, data, None).unwrap();
-        assert_eq!(hive.read(), 42.0);
+        let cortex1: Cortex<_, Semaphore> = Cortex::new(key, data, None).unwrap();
+        assert_eq!(cortex1.read(), 42.0);
 
-        let hive2: Hive<_, Semaphore> = Hive::attach(key).unwrap();
-        assert_eq!(hive.read(), hive2.read());
+        let cortex2: Cortex<_, Semaphore> = Cortex::attach(key).unwrap();
+        assert_eq!(cortex1.read(), cortex2.read());
     }
 
     #[test]
@@ -179,8 +179,8 @@ mod tests {
         let initial_data: i32 = 42;
 
         // Create a new shared memory segment
-        let _hive: Hive<_, Semaphore> =
-            Hive::new(key, initial_data, None).expect("Failed to create shared memory");
+        let _cortex: Cortex<_, Semaphore> =
+            Cortex::new(key, initial_data, None).expect("Failed to create shared memory");
 
         let n_threads = 20;
         let barrier = Arc::new(Barrier::new(n_threads + 1));
@@ -192,10 +192,10 @@ mod tests {
             handles.push(thread::spawn(move || {
                 // Ensure that all threads start simultaneously
                 c_barrier.wait();
-                let attached_hive: Hive<i32, Semaphore> =
-                    Hive::attach(key).expect("Failed to attach to shared memory");
+                let attached_cortex: Cortex<i32, Semaphore> =
+                    Cortex::attach(key).expect("Failed to attach to shared memory");
                 assert_eq!(
-                    attached_hive.read(),
+                    attached_cortex.read(),
                     initial_data,
                     "Data mismatch in attached shared memory"
                 );
