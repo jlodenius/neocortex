@@ -1,5 +1,5 @@
-mod crash;
-mod semaphore;
+pub mod crash;
+pub mod semaphore;
 
 use crash::CortexError;
 use std::fmt::Display;

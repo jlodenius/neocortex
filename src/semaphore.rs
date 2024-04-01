@@ -7,7 +7,7 @@ fn get_name(shmem_key: i32) -> CortexResult<CString> {
 }
 
 #[allow(dead_code)]
-enum SemaphorePermission {
+pub enum SemaphorePermission {
     OwnerOnly,
     OwnerAndGroup,
     ReadWriteForOthers,
@@ -34,13 +34,13 @@ impl SemaphorePermission {
 }
 
 /// Lock that uses a single semaphore for both read and write access
-pub(super) struct Semaphore {
+pub struct Semaphore {
     semaphore: *mut libc::sem_t,
     name: CString,
     is_owner: bool,
 }
 
-pub(super) struct SemaphoreSettings {
+pub struct SemaphoreSettings {
     mode: SemaphorePermission,
 }
 
