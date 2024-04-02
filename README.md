@@ -45,5 +45,3 @@ let settings = SemaphoreSettings {
 };
 let cortex: Cortex<_, Semaphore> = Cortex::new(key, data, Some(&settings)).unwrap();
 ```
-
-> :warning: **Disclaimer**: This crate utilizes libc for shared memory (shmem) and semaphores (if opted in), relying on UNIX-like operating system features. Consequently, **it is not compatible with Windows systems (yet)** as these rely on different APIs for shared memory and synchronization primitives. This crate is tested and known to work on Linux and macOS systems. Users on other UNIX-like systems may also find this crate to be compatible, though specific compatibility cannot be guaranteed without testing.
