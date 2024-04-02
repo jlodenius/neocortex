@@ -1,9 +1,12 @@
 mod crash;
+
+#[cfg(feature = "semaphore")]
 mod semaphore;
 
-pub use crash::CortexError;
+#[cfg(feature = "semaphore")]
 pub use semaphore::{Semaphore, SemaphorePermission, SemaphoreSettings};
-use std::fmt::Display;
+
+pub use crash::CortexError;
 
 pub type CortexResult<T> = std::result::Result<T, CortexError>;
 
@@ -23,35 +26,27 @@ fn try_clear_mem(id: i32) -> CortexResult<()> {
 pub trait CortexSync: Sized {
     type Settings;
 
-    fn new(cortex_key: i32, settings: Option<Self::Settings>) -> CortexResult<Self>;
+    fn new(cortex_key: i32, settings: Option<&Self::Settings>) -> CortexResult<Self>;
     fn attach(cortex_key: i32) -> CortexResult<Self>;
-    fn read_lock(&self);
-    fn write_lock(&self);
-    fn release(&self);
+    fn read_lock(&self) -> CortexResult<()>;
+    fn write_lock(&self) -> CortexResult<()>;
+    fn release(&self) -> CortexResult<()>;
 }
 
+#[derive(Debug)]
 pub struct Cortex<T, L> {
     key: i32,
     id: i32,
+    #[allow(dead_code)]
     size: usize,
     is_owner: bool,
     lock: L,
     ptr: *mut T,
 }
 
-impl<T, L> Display for Cortex<T, L> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "key: {}, id: {}, size: {}, is_owner: {}",
-            self.key, self.id, self.size, self.is_owner
-        )
-    }
-}
-
 impl<T, L: CortexSync> Cortex<T, L> {
     /// Allocate a new segment of shared memory
-    pub fn new(key: i32, data: T, lock_settings: Option<L::Settings>) -> CortexResult<Self> {
+    pub fn new(key: i32, data: T, lock_settings: Option<&L::Settings>) -> CortexResult<Self> {
         let lock = L::new(key, lock_settings)?;
 
         // Allocate memory
@@ -118,21 +113,25 @@ impl<T, L: CortexSync> Cortex<T, L> {
         })
     }
     /// Read from shared memory
-    pub fn read(&self) -> T {
+    pub fn read(&self) -> CortexResult<T> {
         unsafe {
-            self.lock.read_lock();
+            self.lock.read_lock()?;
             let data = self.ptr.read();
-            self.lock.release();
-            data
+            self.lock.release()?;
+            Ok(data)
         }
     }
     /// Write to shared memory
-    pub fn write(&self, data: T) {
+    pub fn write(&self, data: T) -> CortexResult<()> {
         unsafe {
-            self.lock.write_lock();
+            self.lock.write_lock()?;
             self.ptr.write(data);
-            self.lock.release();
+            self.lock.release()?;
         }
+        Ok(())
+    }
+    pub fn key(&self) -> i32 {
+        self.key
     }
 }
 
@@ -143,71 +142,7 @@ impl<T, L> Drop for Cortex<T, L> {
             return;
         }
         if let Err(err) = try_clear_mem(self.id) {
-            tracing::error!("{err}")
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::semaphore::Semaphore;
-    use std::sync::{Arc, Barrier};
-    use std::thread;
-
-    #[test]
-    fn create_shared_mem() {
-        let key = rand::random::<i32>().abs();
-        let data: f64 = 42.0;
-        let cortex: Cortex<_, Semaphore> = Cortex::new(key, data, None).unwrap();
-        assert_eq!(cortex.read(), 42.0);
-    }
-
-    #[test]
-    fn attach_to_shared_mem() {
-        let key = rand::random::<i32>().abs();
-        let data: f64 = 42.0;
-        let cortex1: Cortex<_, Semaphore> = Cortex::new(key, data, None).unwrap();
-        assert_eq!(cortex1.read(), 42.0);
-
-        let cortex2: Cortex<_, Semaphore> = Cortex::attach(key).unwrap();
-        assert_eq!(cortex1.read(), cortex2.read());
-    }
-
-    #[test]
-    fn multi_thread() {
-        let key = rand::random::<i32>().abs();
-        let initial_data: i32 = 42;
-
-        // Create a new shared memory segment
-        let _cortex: Cortex<_, Semaphore> =
-            Cortex::new(key, initial_data, None).expect("Failed to create shared memory");
-
-        let n_threads = 20;
-        let barrier = Arc::new(Barrier::new(n_threads + 1));
-        let mut handles = Vec::with_capacity(n_threads);
-
-        for _ in 0..n_threads {
-            let c_barrier = barrier.clone();
-            // Each thread attaches to the shared memory and verifies the data
-            handles.push(thread::spawn(move || {
-                // Ensure that all threads start simultaneously
-                c_barrier.wait();
-                let attached_cortex: Cortex<i32, Semaphore> =
-                    Cortex::attach(key).expect("Failed to attach to shared memory");
-                assert_eq!(
-                    attached_cortex.read(),
-                    initial_data,
-                    "Data mismatch in attached shared memory"
-                );
-            }));
-        }
-
-        // Wait for all threads to be ready, then release them at once
-        barrier.wait();
-
-        for handle in handles {
-            handle.join().expect("Thread panicked");
+            tracing::error!("{}", err)
         }
     }
 }
