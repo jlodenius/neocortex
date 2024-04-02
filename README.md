@@ -4,7 +4,7 @@
 
 Shared memory crate designed for simplicity, safety, and extensibility. With minimal dependencies on `libc` and `tracing`, this crate wraps unsafe shared memory operations in a user-friendly API.
 
-> :warning: **Disclaimer**: This crate utilizes `libc` for shared memory (shmem) and semaphores (if opted in), relying on UNIX-like operating system features. Consequently, **it is not compatible with Windows systems** as these rely on different APIs for shared memory and synchronization primitives. This crate is tested and known to work on Linux and macOS systems. Users on other UNIX-like systems may also find this crate to be compatible, though specific compatibility cannot be guaranteed without testing.
+> :warning: **Disclaimer**: This crate utilizes libc for shared memory (shmem) and semaphores (if opted in), relying on UNIX-like operating system features. Consequently, **it is not compatible with Windows systems (yet)** as these rely on different APIs for shared memory and synchronization primitives. This crate is tested and known to work on Linux and macOS systems. Users on other UNIX-like systems may also find this crate to be compatible, though specific compatibility cannot be guaranteed without testing.
 
 ## System Requirements
 
