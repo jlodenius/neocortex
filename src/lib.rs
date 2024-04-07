@@ -45,6 +45,32 @@ pub struct Cortex<T, L> {
     ptr: *mut T,
 }
 
+// TODO: builder that takes only a data of typ T
+pub struct CortexBuilder<T, L> {
+    data: T,
+    key: i32,
+    lock: Option<L>,
+}
+
+impl<T, L: CortexSync> CortexBuilder<T, L> {
+    pub fn new(data: T) -> Self {
+        Self {
+            data,
+            key: 1, // todo: random
+            lock: None,
+        }
+    }
+    pub fn key(mut self, key: i32) -> Self {
+        self.key = key;
+        self
+    }
+    pub fn lock(mut self, lock_settings: L::Settings) -> Self {
+        let lock = L::new(self.key, Some(&lock_settings)).unwrap();
+        self.lock.replace(lock);
+        self
+    }
+}
+
 impl<T, L: CortexSync> Cortex<T, L> {
     /// Allocate a new segment of shared memory
     pub fn new(key: i32, data: T, lock_settings: Option<&L::Settings>) -> CortexResult<Self> {
