@@ -1,10 +1,11 @@
 mod crash;
 
-#[cfg(feature = "semaphore")]
-mod semaphore;
-
-#[cfg(feature = "semaphore")]
-pub use semaphore::{Semaphore, SemaphorePermission, SemaphoreSettings};
+cfg_if::cfg_if! {
+    if #[cfg(feature = "semaphore")] {
+        mod semaphore;
+        pub use semaphore::{Semaphore, SemaphorePermission, SemaphoreSettings};
+    }
+}
 
 pub use crash::CortexError;
 
