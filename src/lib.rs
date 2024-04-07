@@ -143,7 +143,7 @@ impl<T, L> Drop for Cortex<T, L> {
             return;
         }
         if let Err(err) = try_clear_mem(self.id) {
-            tracing::error!("{}", err)
+            tracing::error!("Error during Drop: {}", err)
         }
     }
 }
