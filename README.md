@@ -34,8 +34,6 @@ let cortex_2: Cortex<f64, Semaphore> = Cortex::attach(key).unwrap();
 assert_eq!(cortex_1.read().unwrap(), cortex_2.read().unwrap());
 ```
 
-
-
 The `semaphore` module comes with some pre-defined permissions, setting it to `None` like the example above will default to `OwnerOnly` which is the most restrictive mode.
 
 ```rust
