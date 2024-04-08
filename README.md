@@ -26,6 +26,9 @@ cargo add neocortex --features semaphore
 - **Built-in Synchronization**: Includes a semaphore-based lock for safe shared memory access. *(requires crate feature "semaphore")*.
 - **Extendable**: Flexibility to implement custom synchronization logic through the `CortexSync` trait.
 
+
+## Examples
+
 Simple example using the built-in semaphore lock:
 
 ```rust
