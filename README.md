@@ -32,7 +32,7 @@ cargo add neocortex --features semaphore
 Simple example using the built-in semaphore lock:
 
 ```rust
-use neocortex::{Semaphore, SemaphoreSettings, CortexBuilder};
+use neocortex::{Semaphore, CortexBuilder};
 
 // Initialize a segment of shared memory with the value 42.0
 let key = 123;
