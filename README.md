@@ -35,6 +35,12 @@ let cortex = CortexBuilder::new(42.0)
 let attached: Cortex<f64, Semaphore> = Cortex::attach(key).unwrap();
 
 assert_eq!(cortex.read().unwrap(), attached.read().unwrap());
+
+// Write to shared memory
+let new_val = 12.34;
+cortex.write(new_val).unwrap();
+
+assert_eq!(cortex.read().unwrap(), new_val);
 ```
 
 The `semaphore` module comes with some pre-defined permissions, these permissions dictates which OS users can interact with the semaphore. Using `with_default_lock` defaults to `OwnerOnly` which is the most restrictive mode. Check out `SemaphorePermission` for other modes, or use the `Custom` enum-variant to set your own permissions.
