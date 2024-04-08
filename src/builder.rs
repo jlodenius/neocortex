@@ -1,45 +1,54 @@
-use crate::CortexSync;
+use crate::{Cortex, CortexResult, CortexSync};
+use std::marker::PhantomData;
 
-trait BuilderState {}
+pub trait BuilderState {}
 
-// Different states
-struct Initial {}
-struct KeySet {}
+pub struct Uninitialized {}
+pub struct Initialized {}
+pub struct WithKey {}
 
-impl BuilderState for Initial {}
-impl BuilderState for KeySet {}
+impl BuilderState for Uninitialized {}
+impl BuilderState for Initialized {}
+impl BuilderState for WithKey {}
 
-pub struct CortexBuilder<T, L, S> {
+pub struct CortexBuilder<T, S> {
     data: T,
-    key: i32,
-    lock: Option<L>,
-    state: std::marker::PhantomData<S>,
+    key: Option<i32>,
+    state: PhantomData<S>,
 }
 
-impl<T, L: CortexSync> CortexBuilder<T, L, Initial> {
-    pub fn new(data: T) -> Self {
-        Self {
+impl<T> CortexBuilder<T, Uninitialized> {
+    pub fn new(data: T) -> CortexBuilder<T, Initialized> {
+        CortexBuilder {
             data,
-            key: 1, // todo: random
-            lock: None,
-            state: std::marker::PhantomData::<Initial>,
+            key: None,
+            state: PhantomData,
         }
     }
-    pub fn key(mut self, key: i32) -> Self {
-        self.key = key;
-        self
+}
+
+impl<T> CortexBuilder<T, Initialized> {
+    pub fn key(self, key: i32) -> CortexBuilder<T, WithKey> {
+        CortexBuilder {
+            data: self.data,
+            key: Some(key),
+            state: PhantomData,
+        }
     }
 }
 
-impl<T, L: CortexSync> CortexBuilder<T, L, KeySet> {
-    pub fn lock(mut self, lock_settings: L::Settings) -> Self {
-        let lock = L::new(self.key, Some(&lock_settings)).unwrap();
-        self.lock.replace(lock);
-        self
+impl<T> CortexBuilder<T, WithKey> {
+    pub fn with_lock<L: CortexSync>(
+        self,
+        lock_settings: &L::Settings,
+    ) -> CortexResult<Cortex<T, L>> {
+        Ok(Cortex::new(
+            self.key.expect("key is set"),
+            self.data,
+            Some(lock_settings),
+        )?)
     }
-}
-
-#[test]
-fn name() {
-    let builder = CortexBuilder::new(123);
+    pub fn with_default_lock<L: CortexSync>(self) -> CortexResult<Cortex<T, L>> {
+        Ok(Cortex::new(self.key.expect("key is set"), self.data, None)?)
+    }
 }

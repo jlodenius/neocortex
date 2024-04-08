@@ -23,24 +23,31 @@ Shared memory crate designed for simplicity, safety, and extensibility. With min
 Simple example using the built-in semaphore lock:
 
 ```rust
-// Creating a segment of shared memory
-let key = 123;
-let data: f64 = 42.0;
-let cortex_1: Cortex<_, Semaphore> = Cortex::new(key, data, None).unwrap();
-assert_eq!(cortex_1.read().unwrap(), 42.0);
+use neocortex::{Semaphore, SemaphoreSettings, CortexBuilder};
 
-// Attaching to an already existing segment of shared memory requires explicit type annotations
-let cortex_2: Cortex<f64, Semaphore> = Cortex::attach(key).unwrap();
-assert_eq!(cortex_1.read().unwrap(), cortex_2.read().unwrap());
+// Create a segment of shared memory
+let cortex = CortexBuilder::new(42.0)
+    .key(123)
+    .with_default_lock::<Semaphore>()
+    .unwrap();
+
+// Attaching to an existing segment of shared memory requires explicit type annotations
+let attached: Cortex<f64, Semaphore> = Cortex::attach(key).unwrap();
+
+assert_eq!(cortex.read().unwrap(), attached.read().unwrap());
 ```
 
-The `semaphore` module comes with some pre-defined permissions, setting it to `None` like the example above will default to `OwnerOnly` which is the most restrictive mode.
+The `semaphore` module comes with some pre-defined permissions, these permissions dictates which OS users can interact with the semaphore. Using `with_default_lock` defaults to `OwnerOnly` which is the most restrictive mode. Check out `SemaphorePermission` for other modes, or use the `Custom` enum-variant to set custom permissions.
 
 ```rust
-let key = 123;
-let data: f64 = 42.0;
+use neocortex::{Semaphore, SemaphoreSettings, SemaphorePermission, CortexBuilder};
+
 let settings = SemaphoreSettings {
     mode: SemaphorePermission::OwnerAndGroup,
 };
-let cortex: Cortex<_, Semaphore> = Cortex::new(key, data, Some(&settings)).unwrap();
+
+let cortex = CortexBuilder::new(42.0)
+    .key(123)
+    .with_lock::<Semaphore>(&settings)
+    .unwrap();
 ```
