@@ -38,6 +38,8 @@ impl<T> CortexBuilder<T, Initialized> {
 }
 
 impl<T> CortexBuilder<T, WithKey> {
+    /// Attempts to construct a `Cortex` with custom lock settings that will differ depending on
+    /// your lock implementation
     pub fn with_lock<L: CortexSync>(
         self,
         lock_settings: &L::Settings,
@@ -48,6 +50,7 @@ impl<T> CortexBuilder<T, WithKey> {
             Some(lock_settings),
         )?)
     }
+    /// Attempts to construct a `Cortex` without passing any lock settings
     pub fn with_default_lock<L: CortexSync>(self) -> CortexResult<Cortex<T, L>> {
         Ok(Cortex::new(self.key.expect("key is set"), self.data, None)?)
     }
