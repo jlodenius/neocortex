@@ -34,9 +34,10 @@ Simple example using the built-in semaphore lock:
 ```rust
 use neocortex::{Semaphore, SemaphoreSettings, CortexBuilder};
 
-// Create a segment of shared memory
+// Initialize a segment of shared memory with the value 42.0
+let key = 123;
 let cortex = CortexBuilder::new(42.0)
-    .key(123)
+    .key(key)
     .with_default_lock::<Semaphore>()
     .unwrap();
 
