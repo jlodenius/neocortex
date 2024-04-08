@@ -4,6 +4,12 @@
 
 Shared memory crate designed for simplicity, safety, and extensibility. With minimal dependencies on `libc` and `tracing`, this crate wraps unsafe shared memory operations in a user-friendly API.
 
+## Quick Start
+Install using the *(currently)* only built-in lock implementation. See examples below for more instructions.
+```bash
+cargo add neocortex --features semaphore
+```
+
 ## System Requirements
 
 - **Operating System**: Linux, macOS, or other UNIX-like operating systems.
@@ -20,27 +26,44 @@ Shared memory crate designed for simplicity, safety, and extensibility. With min
 - **Built-in Synchronization**: Includes a semaphore-based lock for safe shared memory access. *(requires crate feature "semaphore")*.
 - **Extendable**: Flexibility to implement custom synchronization logic through the `CortexSync` trait.
 
+
+## Examples
+
 Simple example using the built-in semaphore lock:
 
 ```rust
-// Creating a segment of shared memory
-let key = 123;
-let data: f64 = 42.0;
-let cortex_1: Cortex<_, Semaphore> = Cortex::new(key, data, None).unwrap();
-assert_eq!(cortex_1.read().unwrap(), 42.0);
+use neocortex::{Semaphore, CortexBuilder};
 
-// Attaching to an already existing segment of shared memory requires explicit type annotations
-let cortex_2: Cortex<f64, Semaphore> = Cortex::attach(key).unwrap();
-assert_eq!(cortex_1.read().unwrap(), cortex_2.read().unwrap());
+// Initialize a segment of shared memory with the value 42.0
+let key = 123;
+let cortex = CortexBuilder::new(42.0)
+    .key(key)
+    .with_default_lock::<Semaphore>()
+    .unwrap();
+
+// Attaching to an existing segment of shared memory requires explicit type annotations
+let attached: Cortex<f64, Semaphore> = Cortex::attach(key).unwrap();
+
+assert_eq!(cortex.read().unwrap(), attached.read().unwrap());
+
+// Write to shared memory
+let new_val = 12.34;
+cortex.write(new_val).unwrap();
+
+assert_eq!(cortex.read().unwrap(), new_val);
 ```
 
-The `semaphore` module comes with some pre-defined permissions, setting it to `None` like the example above will default to `OwnerOnly` which is the most restrictive mode.
+The `semaphore` module comes with some pre-defined permissions, these permissions dictates which OS users can interact with the semaphore. Using `with_default_lock` defaults to `OwnerOnly` which is the most restrictive mode. Check out `SemaphorePermission` for other modes, or use the `Custom` enum-variant to set your own permissions.
 
 ```rust
-let key = 123;
-let data: f64 = 42.0;
+use neocortex::{Semaphore, SemaphoreSettings, SemaphorePermission, CortexBuilder};
+
 let settings = SemaphoreSettings {
     mode: SemaphorePermission::OwnerAndGroup,
 };
-let cortex: Cortex<_, Semaphore> = Cortex::new(key, data, Some(&settings)).unwrap();
+
+let cortex = CortexBuilder::new(42.0)
+    .key(123)
+    .with_lock::<Semaphore>(&settings)
+    .unwrap();
 ```

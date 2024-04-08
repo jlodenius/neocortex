@@ -1,3 +1,4 @@
+mod builder;
 mod crash;
 
 cfg_if::cfg_if! {
@@ -7,6 +8,7 @@ cfg_if::cfg_if! {
     }
 }
 
+pub use builder::CortexBuilder;
 pub use crash::CortexError;
 
 pub type CortexResult<T> = std::result::Result<T, CortexError>;
