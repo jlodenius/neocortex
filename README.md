@@ -32,7 +32,7 @@ cargo add neocortex --features semaphore
 Simple example using the built-in semaphore lock:
 
 ```rust
-use neocortex::{Semaphore, CortexBuilder};
+use neocortex::{Cortex, CortexBuilder, Semaphore};
 
 // Initialize a segment of shared memory with the value 42.0
 let key = 123;
@@ -56,7 +56,7 @@ assert_eq!(cortex.read().unwrap(), new_val);
 The `semaphore` module comes with some pre-defined permissions, these permissions dictates which OS users can interact with the semaphore. Using `with_default_lock` defaults to `OwnerOnly` which is the most restrictive mode. Check out `SemaphorePermission` for other modes, or use the `Custom` enum-variant to set your own permissions.
 
 ```rust
-use neocortex::{Semaphore, SemaphoreSettings, SemaphorePermission, CortexBuilder};
+use neocortex::{CortexBuilder, Semaphore, SemaphoreSettings, SemaphorePermission};
 
 let settings = SemaphoreSettings {
     mode: SemaphorePermission::OwnerAndGroup,
