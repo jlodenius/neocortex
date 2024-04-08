@@ -37,7 +37,7 @@ let attached: Cortex<f64, Semaphore> = Cortex::attach(key).unwrap();
 assert_eq!(cortex.read().unwrap(), attached.read().unwrap());
 ```
 
-The `semaphore` module comes with some pre-defined permissions, these permissions dictates which OS users can interact with the semaphore. Using `with_default_lock` defaults to `OwnerOnly` which is the most restrictive mode. Check out `SemaphorePermission` for other modes, or use the `Custom` enum-variant to set custom permissions.
+The `semaphore` module comes with some pre-defined permissions, these permissions dictates which OS users can interact with the semaphore. Using `with_default_lock` defaults to `OwnerOnly` which is the most restrictive mode. Check out `SemaphorePermission` for other modes, or use the `Custom` enum-variant to set your own permissions.
 
 ```rust
 use neocortex::{Semaphore, SemaphoreSettings, SemaphorePermission, CortexBuilder};
