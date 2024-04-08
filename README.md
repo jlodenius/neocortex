@@ -4,6 +4,12 @@
 
 Shared memory crate designed for simplicity, safety, and extensibility. With minimal dependencies on `libc` and `tracing`, this crate wraps unsafe shared memory operations in a user-friendly API.
 
+## Quick Start
+Install using the *(currently)* only built-in lock implementation. See examples below for more instructions.
+```bash
+cargo add neocortex --features semaphore
+```
+
 ## System Requirements
 
 - **Operating System**: Linux, macOS, or other UNIX-like operating systems.
