@@ -1,7 +1,7 @@
 use crate::{crash::CortexError, CortexResult, CortexSync};
-use std::ffi::CString;
+use std::ffi::{CString, NulError};
 
-fn get_name(shmem_key: i32) -> CortexResult<CString> {
+fn get_name(shmem_key: i32) -> Result<CString, NulError> {
     let name = CString::new(format!("cortex_semaphore_{}", shmem_key))?;
     Ok(name)
 }
@@ -72,7 +72,10 @@ impl CortexSync for Semaphore {
             // Use most restrictive mode as default
             SemaphorePermission::OwnerOnly.as_mode()
         };
-        let name = get_name(cortex_key)?;
+        let name = match get_name(cortex_key) {
+            Ok(name) => name,
+            Err(_) => return Err(CortexError::new_clean("CString NulError")),
+        };
         let name_ptr = name.as_ptr();
         let semaphore =
             unsafe { libc::sem_open(name_ptr, libc::O_EXCL | libc::O_CREAT, permission, 1) };
@@ -86,7 +89,10 @@ impl CortexSync for Semaphore {
         })
     }
     fn attach(cortex_key: i32) -> CortexResult<Self> {
-        let name = get_name(cortex_key)?;
+        let name = match get_name(cortex_key) {
+            Ok(name) => name,
+            Err(_) => return Err(CortexError::new_clean("CString NulError")),
+        };
         let name_ptr = name.as_ptr();
         let semaphore = unsafe { libc::sem_open(name_ptr, 0, 0, 0) };
         if semaphore == libc::SEM_FAILED {
