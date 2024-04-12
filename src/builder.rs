@@ -44,14 +44,14 @@ impl<T> CortexBuilder<T, WithKey> {
         self,
         lock_settings: &L::Settings,
     ) -> CortexResult<Cortex<T, L>> {
-        Ok(Cortex::new(
+        Cortex::new(
             self.key.expect("key is set"),
             self.data,
             Some(lock_settings),
-        )?)
+        )
     }
     /// Attempts to construct a `Cortex` without passing any lock settings
     pub fn with_default_lock<L: CortexSync>(self) -> CortexResult<Cortex<T, L>> {
-        Ok(Cortex::new(self.key.expect("key is set"), self.data, None)?)
+        Cortex::new(self.key.expect("key is set"), self.data, None)
     }
 }
