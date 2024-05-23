@@ -11,7 +11,7 @@ pub enum CortexError {
 
 #[derive(Debug)]
 pub struct InnerError {
-    os_error: Box<dyn Error>,
+    os_error: String,
     message: String,
 }
 
@@ -31,7 +31,7 @@ impl Display for CortexError {
 impl CortexError {
     fn new_inner_error(message: impl ToString) -> InnerError {
         InnerError {
-            os_error: Box::new(std::io::Error::last_os_error()),
+            os_error: std::io::Error::last_os_error().to_string(),
             message: message.to_string(),
         }
     }

@@ -189,4 +189,16 @@ mod tests {
             handle.join().expect("Thread panicked");
         }
     }
+
+    #[test]
+    fn thread_safety() {
+        let key = rand::random::<i32>().abs();
+        let initial_data: i32 = 42;
+
+        // Create a new shared memory segment
+        let cortex: Cortex<_, Semaphore> =
+            Cortex::new(key, initial_data, None).expect("Failed to create shared memory");
+
+        thread::spawn(move || cortex.read());
+    }
 }

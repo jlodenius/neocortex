@@ -28,10 +28,19 @@ impl<T> CortexBuilder<T, Uninitialized> {
 }
 
 impl<T> CortexBuilder<T, Initialized> {
+    /// Set a custom key
     pub fn key(self, key: i32) -> CortexBuilder<T, WithKey> {
         CortexBuilder {
             data: self.data,
             key: Some(key),
+            state: PhantomData,
+        }
+    }
+    /// Attempt to generate a random key
+    pub fn random_key(self) -> CortexBuilder<T, WithKey> {
+        CortexBuilder {
+            data: self.data,
+            key: None,
             state: PhantomData,
         }
     }
@@ -44,14 +53,10 @@ impl<T> CortexBuilder<T, WithKey> {
         self,
         lock_settings: &L::Settings,
     ) -> CortexResult<Cortex<T, L>> {
-        Cortex::new(
-            self.key.expect("key is set"),
-            self.data,
-            Some(lock_settings),
-        )
+        Cortex::new(self.key, self.data, Some(lock_settings))
     }
     /// Attempts to construct a `Cortex` without passing any lock settings
     pub fn with_default_lock<L: CortexSync>(self) -> CortexResult<Cortex<T, L>> {
-        Cortex::new(self.key.expect("key is set"), self.data, None)
+        Cortex::new(self.key, self.data, None)
     }
 }

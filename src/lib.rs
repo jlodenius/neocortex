@@ -47,32 +47,68 @@ pub struct Cortex<T, L> {
     ptr: *mut T,
 }
 
+unsafe impl<T, L> Send for Cortex<T, L> {}
+unsafe impl<T, L> Sync for Cortex<T, L> {}
+
 impl<T, L: CortexSync> Cortex<T, L> {
     /// Allocate a new segment of shared memory
-    pub fn new(key: i32, data: T, lock_settings: Option<&L::Settings>) -> CortexResult<Self> {
-        let lock = L::new(key, lock_settings)?;
+    pub fn new(
+        init_key: Option<i32>,
+        data: T,
+        lock_settings: Option<&L::Settings>,
+    ) -> CortexResult<Self> {
+        let mut key = if let Some(key) = init_key {
+            key
+        } else {
+            unsafe { libc::rand() }
+        };
 
         // Allocate memory
         let size = std::mem::size_of::<T>();
         let permissions = libc::IPC_CREAT | libc::IPC_EXCL | 0o666;
-        let id = unsafe { libc::shmget(key, size, permissions) };
+        let mut id = unsafe { libc::shmget(key, size, permissions) };
+
         if id == -1 {
-            try_clear_mem(id)?
-        } else {
-            tracing::trace!("Allocated {} bytes with id {}", size, id);
+            let mut errno = unsafe { *libc::__errno_location() };
+
+            // If key already exists and using random key
+            if errno == libc::EEXIST && init_key.is_none() {
+                // Loop and retry for new key up to 20 times
+                let mut counter = 0;
+                while counter < 20 && id == -1 && errno == libc::EEXIST {
+                    key = unsafe { libc::rand() };
+                    id = unsafe { libc::shmget(key, size, permissions) };
+                    if id != -1 {
+                        break;
+                    }
+                    errno = unsafe { *libc::__errno_location() };
+                    counter += 1;
+                }
+            }
         }
+
+        if id == -1 {
+            return Err(CortexError::new_clean("Error during shmget"));
+        }
+
+        tracing::trace!("Allocated {} bytes with id: {}", size, id);
 
         // Attach memory to current process and get a pointer
         let ptr = unsafe { libc::shmat(id, std::ptr::null_mut(), 0) as *mut T };
         if ptr as isize == -1 {
             try_clear_mem(id)?;
-        } else {
-            tracing::trace!("Successfully attached shared memory");
+            return Err(CortexError::new_clean(format!(
+                "Error during shmat for id: {}",
+                id
+            )));
         }
+        tracing::trace!("Successfully attached shared memory");
 
         unsafe {
             ptr.write(data);
         }
+
+        let lock = L::new(key, lock_settings)?;
 
         Ok(Self {
             id,
@@ -92,11 +128,11 @@ impl<T, L: CortexSync> Cortex<T, L> {
         };
         if id == -1 {
             return Err(CortexError::new_clean(format!(
-                "Error during shmget for key {}",
+                "Error during shmget for key: {}",
                 key,
             )));
         } else {
-            tracing::trace!("Found shared memory with id {}", id);
+            tracing::trace!("Found shared memory with id: {}", id);
         }
 
         let ptr = unsafe { libc::shmat(id, std::ptr::null_mut(), 0) as *mut T };
