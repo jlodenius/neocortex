@@ -90,7 +90,6 @@ impl<T, L: CortexSync> Cortex<T, L> {
         if id == -1 {
             return Err(CortexError::new_clean("Error during shmget"));
         }
-
         tracing::trace!("Allocated {} bytes with id: {}", size, id);
 
         // Attach memory to current process and get a pointer
