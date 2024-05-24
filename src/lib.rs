@@ -55,6 +55,7 @@ impl<T, L: CortexSync> Cortex<T, L> {
     pub fn new(
         init_key: Option<i32>,
         data: T,
+        force_ownership: bool,
         lock_settings: Option<&L::Settings>,
     ) -> CortexResult<Self> {
         let mut key = if let Some(key) = init_key {
@@ -71,18 +72,31 @@ impl<T, L: CortexSync> Cortex<T, L> {
         if id == -1 {
             let mut errno = unsafe { *libc::__errno_location() };
 
-            // If key already exists and using random key
-            if errno == libc::EEXIST && init_key.is_none() {
-                // Loop and retry for new key up to 20 times
-                let mut counter = 0;
-                while counter < 20 && id == -1 && errno == libc::EEXIST {
-                    key = unsafe { libc::rand() };
-                    id = unsafe { libc::shmget(key, size, permissions) };
-                    if id != -1 {
-                        break;
+            // If key already exists
+            if errno == libc::EEXIST {
+                match init_key {
+                    Some(key) if force_ownership => {
+                        // Attach and set `is_owner` to true
+                        let mut attached = Cortex::attach(key)?;
+                        attached.is_owner = true;
+                        return Ok(attached);
                     }
-                    errno = unsafe { *libc::__errno_location() };
-                    counter += 1;
+                    Some(_) => {
+                        // Do nothing
+                    }
+                    None => {
+                        // Loop and retry for new key up to 20 times
+                        let mut counter = 0;
+                        while counter < 20 && id == -1 && errno == libc::EEXIST {
+                            key = unsafe { libc::rand() };
+                            id = unsafe { libc::shmget(key, size, permissions) };
+                            if id != -1 {
+                                break;
+                            }
+                            errno = unsafe { *libc::__errno_location() };
+                            counter += 1;
+                        }
+                    }
                 }
             }
         }
