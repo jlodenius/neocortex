@@ -67,3 +67,14 @@ let cortex = CortexBuilder::new(42.0)
     .with_lock::<Semaphore>(&settings)
     .unwrap();
 ```
+
+## Additional Features
+
+### Generated key
+
+To generate a random key, instead of passing `.key(some_key)` to the builder, use `.random_key()`. This will attempt to randomize a key and retry up to 20 times if the key already exists.
+
+
+### Force ownership
+
+When creating a shared memory segment with a specific key, you can use the `.force_ownership()` method on the builder. This will attempt to create a new shared memory segment as usual. However, if the key already exists, instead of returning an error, it attaches to the existing segment. It behaves as if the segment was newly created (i.e. owned), ensuring that the shared memory is cleaned up when the instance is dropped.
