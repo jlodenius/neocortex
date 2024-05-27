@@ -77,8 +77,14 @@ impl CortexSync for Semaphore {
             Err(_) => return Err(CortexError::new_clean("CString NulError")),
         };
         let name_ptr = name.as_ptr();
-        let semaphore =
-            unsafe { libc::sem_open(name_ptr, libc::O_EXCL | libc::O_CREAT, permission, 1) };
+        let semaphore = unsafe {
+            libc::sem_open(
+                name_ptr,
+                libc::O_EXCL | libc::O_CREAT,
+                permission as libc::c_uint,
+                1,
+            )
+        };
         if semaphore == libc::SEM_FAILED {
             return Err(CortexError::new_clean("Error during sem_open"));
         }
@@ -94,7 +100,7 @@ impl CortexSync for Semaphore {
             Err(_) => return Err(CortexError::new_clean("CString NulError")),
         };
         let name_ptr = name.as_ptr();
-        let semaphore = unsafe { libc::sem_open(name_ptr, 0, 0, 0) };
+        let semaphore = unsafe { libc::sem_open(name_ptr, 0, 0 as libc::c_uint, 0) };
         if semaphore == libc::SEM_FAILED {
             return Err(CortexError::new_clean("Error during sem_open"));
         }
