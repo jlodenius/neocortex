@@ -77,4 +77,4 @@ To generate a random key, instead of passing `.key(some_key)` to the builder, us
 
 ### Force ownership
 
-When creating a shared memory segment with a specific key, you can use the `.force_ownership()` method on the builder. This will attempt to create a new shared memory segment as usual. However, if the key already exists, instead of returning an error, it attaches to the existing segment. It behaves as if the segment was newly created (i.e. owned), ensuring that the shared memory is cleaned up when the instance is dropped.
+Call `.force_ownership()` on the builder after specifying a key *(does not work with random key)*. This will either create a new segment or attach to an existing one if the key already exists. No matter what, this ensures that the shared memory is cleaned up when the instance is dropped by setting ownership to true. Use this with caution as it might drop memory that is being used by other parts of your application if used incorrectly.
