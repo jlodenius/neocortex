@@ -10,6 +10,7 @@ cfg_if::cfg_if! {
 
 pub use builder::CortexBuilder;
 pub use crash::CortexError;
+use errno;
 
 pub type CortexResult<T> = std::result::Result<T, CortexError>;
 
@@ -70,10 +71,10 @@ impl<T, L: CortexSync> Cortex<T, L> {
         let mut id = unsafe { libc::shmget(key, size, permissions) };
 
         if id == -1 {
-            let mut errno = unsafe { *libc::__errno_location() };
+            let mut errno = errno::errno();
 
             // If key already exists
-            if errno == libc::EEXIST {
+            if errno.0 == libc::EEXIST {
                 match init_key {
                     Some(key) if force_ownership => {
                         // Attach and set `is_owner` to true
@@ -87,13 +88,13 @@ impl<T, L: CortexSync> Cortex<T, L> {
                     None => {
                         // Loop and retry for new key up to 20 times
                         let mut counter = 0;
-                        while counter < 20 && id == -1 && errno == libc::EEXIST {
+                        while counter < 20 && id == -1 && errno.0 == libc::EEXIST {
                             key = unsafe { libc::rand() };
                             id = unsafe { libc::shmget(key, size, permissions) };
                             if id != -1 {
                                 break;
                             }
-                            errno = unsafe { *libc::__errno_location() };
+                            errno = errno::errno();
                             counter += 1;
                         }
                     }

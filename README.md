@@ -2,7 +2,7 @@
 
 <div align="center"><img src="img/dr_neo_cortex.png" width="200" height="200"></div>
 
-Shared memory crate designed for simplicity, safety, and extensibility. With minimal dependencies on `libc` and `tracing`, this crate wraps unsafe shared memory operations in a user-friendly API.
+Shared memory crate designed for simplicity, safety, and extensibility. With minimal dependencies, this crate wraps unsafe shared memory operations from `libc` in a user-friendly API.
 
 ## Quick Start
 Install using the *(currently)* only built-in lock implementation. See examples below for more instructions.
