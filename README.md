@@ -67,3 +67,14 @@ let cortex = CortexBuilder::new(42.0)
     .with_lock::<Semaphore>(&settings)
     .unwrap();
 ```
+
+## Additional Features
+
+### Generated key
+
+To generate a random key, instead of passing `.key(some_key)` to the builder, use `.random_key()`. This will attempt to randomize a key and retry up to 20 times if the key already exists.
+
+
+### Force ownership
+
+Call `.force_ownership()` on the builder after specifying a key *(does not work with random key)*. This will either create a new segment or attach to an existing one if the key already exists. No matter what, this ensures that the shared memory is cleaned up when the instance is dropped by setting ownership to true. Use this with caution as it might drop memory that is being used by other parts of your application if used incorrectly.

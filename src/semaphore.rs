@@ -138,7 +138,7 @@ mod tests {
     fn create_shared_mem() {
         let key = rand::random::<i32>().abs();
         let data: f64 = 42.0;
-        let cortex: Cortex<_, Semaphore> = Cortex::new(key, data, None).unwrap();
+        let cortex: Cortex<_, Semaphore> = Cortex::new(Some(key), data, false, None).unwrap();
         assert_eq!(cortex.read().unwrap(), 42.0);
     }
 
@@ -146,7 +146,7 @@ mod tests {
     fn attach_to_shared_mem() {
         let key = rand::random::<i32>().abs();
         let data: f64 = 42.0;
-        let cortex1: Cortex<_, Semaphore> = Cortex::new(key, data, None).unwrap();
+        let cortex1: Cortex<_, Semaphore> = Cortex::new(Some(key), data, false, None).unwrap();
         assert_eq!(cortex1.read().unwrap(), 42.0);
 
         let cortex2: Cortex<_, Semaphore> = Cortex::attach(key).unwrap();
@@ -159,8 +159,8 @@ mod tests {
         let initial_data: i32 = 42;
 
         // Create a new shared memory segment
-        let _cortex: Cortex<_, Semaphore> =
-            Cortex::new(key, initial_data, None).expect("Failed to create shared memory");
+        let _cortex: Cortex<_, Semaphore> = Cortex::new(Some(key), initial_data, false, None)
+            .expect("Failed to create shared memory");
 
         let n_threads = 20;
         let barrier = Arc::new(Barrier::new(n_threads + 1));
@@ -188,5 +188,17 @@ mod tests {
         for handle in handles {
             handle.join().expect("Thread panicked");
         }
+    }
+
+    #[test]
+    fn thread_safety() {
+        let key = rand::random::<i32>().abs();
+        let initial_data: i32 = 42;
+
+        // Create a new shared memory segment
+        let cortex: Cortex<_, Semaphore> = Cortex::new(Some(key), initial_data, false, None)
+            .expect("Failed to create shared memory");
+
+        thread::spawn(move || cortex.read());
     }
 }
