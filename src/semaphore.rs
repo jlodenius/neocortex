@@ -48,16 +48,19 @@ pub struct SemaphoreSettings {
 
 impl Drop for Semaphore {
     fn drop(&mut self) {
+        tracing::trace!("Dropping semaphore: {:?}", self.name);
+
+        // Mark semaphore as done by current process, decreasing its reference count but does not
+        // remove it from the system
+        if unsafe { libc::sem_close(self.semaphore) } == -1 {
+            tracing::error!("Error during sem_close");
+        };
         if !self.is_owner {
             return;
         }
-        unsafe {
-            if libc::sem_close(self.semaphore) == -1 {
-                tracing::error!("Error during sem_close");
-            };
-            if libc::sem_unlink(self.name.as_ptr()) == -1 {
-                tracing::error!("Error during sem_unlink");
-            }
+        // Delete the semaphore from the system
+        if unsafe { libc::sem_unlink(self.name.as_ptr()) } == -1 {
+            tracing::error!("Error during sem_unlink");
         }
     }
 }
@@ -130,6 +133,9 @@ impl CortexSync for Semaphore {
         } else {
             Ok(())
         }
+    }
+    fn force_ownership(&mut self) {
+        self.is_owner = true
     }
 }
 
