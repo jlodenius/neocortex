@@ -12,26 +12,36 @@ pub use builder::CortexBuilder;
 pub use crash::CortexError;
 use errno;
 
-pub type CortexResult<T> = std::result::Result<T, CortexError>;
-
-/// Attempt to clean up a segment of shared memory
-fn try_clear_mem(id: i32) -> CortexResult<()> {
-    unsafe {
-        if libc::shmctl(id, libc::IPC_RMID, std::ptr::null_mut()) == -1 {
-            return Err(CortexError::new_dirty(format!(
-                "Error cleaning up shared memory with id: {}",
-                id
-            )));
-        }
+/// Attempt to detach process from shared memory
+fn detach(id: i32, ptr: *const libc::c_void) -> CortexResult<()> {
+    if unsafe { libc::shmdt(ptr) } == -1 {
+        return Err(CortexError::new_dirty(format!(
+            "Failed to detach from shared memory with id: {}",
+            id
+        )));
     }
     Ok(())
 }
+
+/// Attempt to mark shared memory segment for deletion
+fn mark_for_deletion(id: i32) -> CortexResult<()> {
+    if unsafe { libc::shmctl(id, libc::IPC_RMID, std::ptr::null_mut()) } == -1 {
+        return Err(CortexError::new_dirty(format!(
+            "Error cleaning up shared memory with id: {}",
+            id
+        )));
+    }
+    Ok(())
+}
+
+pub type CortexResult<T> = std::result::Result<T, CortexError>;
 
 pub trait CortexSync: Sized {
     type Settings;
 
     fn new(cortex_key: i32, settings: Option<&Self::Settings>) -> CortexResult<Self>;
     fn attach(cortex_key: i32) -> CortexResult<Self>;
+    fn force_ownership(&mut self);
     fn read_lock(&self) -> CortexResult<()>;
     fn write_lock(&self) -> CortexResult<()>;
     fn release(&self) -> CortexResult<()>;
@@ -79,7 +89,7 @@ impl<T, L: CortexSync> Cortex<T, L> {
                     Some(key) if force_ownership => {
                         // Attach and set `is_owner` to true
                         let mut attached = Cortex::attach(key)?;
-                        attached.is_owner = true;
+                        attached.force_ownership();
                         return Ok(attached);
                     }
                     Some(_) => {
@@ -110,13 +120,13 @@ impl<T, L: CortexSync> Cortex<T, L> {
         // Attach memory to current process and get a pointer
         let ptr = unsafe { libc::shmat(id, std::ptr::null_mut(), 0) as *mut T };
         if ptr as isize == -1 {
-            try_clear_mem(id)?;
+            mark_for_deletion(id)?;
             return Err(CortexError::new_clean(format!(
                 "Error during shmat for id: {}",
                 id
             )));
         }
-        tracing::trace!("Successfully attached shared memory");
+        tracing::trace!("Successfully attached to shared memory");
 
         unsafe {
             ptr.write(data);
@@ -153,7 +163,7 @@ impl<T, L: CortexSync> Cortex<T, L> {
         if ptr as isize == -1 {
             return Err(CortexError::new_clean("Error during shmat"));
         } else {
-            tracing::trace!("Successfully attached shared memory");
+            tracing::trace!("Successfully attached to shared memory");
         }
 
         Ok(Self {
@@ -186,16 +196,25 @@ impl<T, L: CortexSync> Cortex<T, L> {
     pub fn key(&self) -> i32 {
         self.key
     }
+    fn force_ownership(&mut self) {
+        self.is_owner = true;
+        self.lock.force_ownership();
+    }
 }
 
 /// Drop a segment of shared memory
 impl<T, L> Drop for Cortex<T, L> {
     fn drop(&mut self) {
+        tracing::trace!("Dropping shared memory with id: {}", self.id);
+
+        if let Err(err) = detach(self.id, self.ptr as *const libc::c_void) {
+            tracing::error!("Error during detach in Drop: {}", err)
+        }
         if !self.is_owner {
             return;
         }
-        if let Err(err) = try_clear_mem(self.id) {
-            tracing::error!("Error during Drop: {}", err)
+        if let Err(err) = mark_for_deletion(self.id) {
+            tracing::error!("Error during mark_for_deletion in Drop: {}", err)
         }
     }
 }
